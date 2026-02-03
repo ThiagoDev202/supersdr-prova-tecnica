@@ -5,8 +5,8 @@ import { z } from 'zod';
  *
  * Baseado na documentação oficial: https://developer.z-api.io/webhooks/on-message-received
  *
- * IMPORTANTE: Este schema valida apenas mensagens de TEXTO recebidas.
- * Outros tipos (imagem, áudio, etc.) serão ignorados neste MVP.
+ * Suporta mensagens de TEXTO e IMAGEM (com caption).
+ * Outros tipos serão aceitos mas normalizados como "outro" no adapter.
  */
 
 /**
@@ -17,7 +17,20 @@ const ZApiTextSchema = z.object({
 });
 
 /**
- * Schema principal do webhook Z-API para mensagens de texto.
+ * Schema para o objeto de imagem da mensagem.
+ */
+const ZApiImageSchema = z.object({
+  imageUrl: z.string(),
+  thumbnailUrl: z.string().optional(),
+  caption: z.string().optional(),
+  mimeType: z.string().optional(),
+  viewOnce: z.boolean().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+});
+
+/**
+ * Schema principal do webhook Z-API.
  *
  * Campos obrigatórios conforme documentação:
  * - instanceId: ID da instância Z-API
@@ -28,8 +41,11 @@ const ZApiTextSchema = z.object({
  * - status: Status da mensagem
  * - chatName: Nome do chat/contato
  * - senderName: Nome do remetente
- * - text: Objeto contendo a mensagem de texto
  * - type: Tipo do callback (ReceivedCallback)
+ *
+ * Campos opcionais (dependem do tipo de mensagem):
+ * - text: Objeto contendo a mensagem de texto
+ * - image: Objeto contendo imagem com caption opcional
  */
 export const ZApiWebhookSchema = z.object({
   instanceId: z.string().min(1),
@@ -40,12 +56,14 @@ export const ZApiWebhookSchema = z.object({
   status: z.string(),
   chatName: z.string(),
   senderName: z.string(),
-  senderPhoto: z.string().optional(),
+  senderPhoto: z.string().nullable().optional(),
   participantPhone: z.string().nullable().optional(),
-  photo: z.string().optional(),
+  photo: z.string().nullable().optional(),
   broadcast: z.boolean().optional(),
   type: z.literal('ReceivedCallback'),
-  text: ZApiTextSchema,
+  // Tipos de mensagem (pelo menos um deve estar presente)
+  text: ZApiTextSchema.optional(),
+  image: ZApiImageSchema.optional(),
 });
 
 /**

@@ -5,6 +5,8 @@ import { createApp } from './app.js';
 // Infrastructure
 import { PrismaMessageRepository } from '../database/repositories/PrismaMessageRepository.js';
 import { ClaudeService } from '../llm/ClaudeService.js';
+import { MockClaudeService } from '../llm/MockClaudeService.js';
+import type { ClassificationService } from '../../usecases/interfaces/ClassificationService.js';
 
 // Adapters
 import { initializeAdapters, adapterRegistry } from '../../adapters/index.js';
@@ -29,7 +31,14 @@ async function bootstrap(): Promise<void> {
   const messageRepository = new PrismaMessageRepository(prisma);
 
   // 3. Services
-  const claudeService = new ClaudeService(env.ANTHROPIC_API_KEY);
+  const useMockLLM = process.env.USE_MOCK_LLM === 'true';
+  const claudeService: ClassificationService = useMockLLM
+    ? new MockClaudeService()
+    : new ClaudeService(env.ANTHROPIC_API_KEY);
+
+  if (useMockLLM) {
+    console.log('⚠️  Usando MockClaudeService (USE_MOCK_LLM=true)');
+  }
 
   // 4. Adapter Registry (inicializa o singleton)
   initializeAdapters();

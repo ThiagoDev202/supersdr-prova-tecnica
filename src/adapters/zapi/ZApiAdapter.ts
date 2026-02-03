@@ -32,8 +32,12 @@ export class ZApiAdapter implements WebhookAdapter<ZApiWebhookPayload> {
 
   /**
    * Normaliza o payload do Z-API para formato único interno.
+   * Suporta mensagens de texto e imagens (usando caption).
    */
   normalize(payload: ZApiWebhookPayload): CreateNormalizedMessage {
+    // Extrai conteúdo: texto > caption da imagem > placeholder
+    const content = this.extractContent(payload);
+
     return {
       externalId: payload.messageId,
       provider: this.provider,
@@ -43,11 +47,35 @@ export class ZApiAdapter implements WebhookAdapter<ZApiWebhookPayload> {
       },
       message: {
         type: 'text',
-        content: payload.text.message,
+        content,
       },
       timestamp: new Date(payload.momment),
       isFromMe: payload.fromMe,
     };
+  }
+
+  /**
+   * Extrai o conteúdo textual da mensagem.
+   * Prioridade: texto > caption da imagem > placeholder
+   */
+  private extractContent(payload: ZApiWebhookPayload): string {
+    // Mensagem de texto
+    if (payload.text?.message) {
+      return payload.text.message;
+    }
+
+    // Imagem com caption
+    if (payload.image?.caption) {
+      return payload.image.caption;
+    }
+
+    // Imagem sem caption
+    if (payload.image) {
+      return '[Imagem recebida]';
+    }
+
+    // Fallback para outros tipos de mídia
+    return '[Mídia recebida]';
   }
 
   /**
