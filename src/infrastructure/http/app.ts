@@ -1,13 +1,13 @@
 import express, { type Application } from 'express';
-import { webhookRoutes } from './routes/webhookRoutes.js';
+import { createWebhookRoutes, type WebhookRoutesDependencies } from './routes/webhookRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestLogger } from './middleware/requestLogger.js';
 
 /**
  * Configura e retorna a aplicação Express.
- * Separado do server.ts para facilitar testes.
+ * Recebe dependências por injeção.
  */
-export function createApp(): Application {
+export function createApp(deps: WebhookRoutesDependencies): Application {
   const app = express();
 
   // Middlewares globais
@@ -19,8 +19,8 @@ export function createApp(): Application {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  // Rotas
-  app.use('/webhook', webhookRoutes);
+  // Rotas de webhook com dependências injetadas
+  app.use('/webhook', createWebhookRoutes(deps));
 
   // Middleware de erro global (deve ser o último)
   app.use(errorHandler);
