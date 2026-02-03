@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Message {
+  id         String @id @default(uuid())
+  externalId String
+  provider   String
+
+  // Contato
+  contactPhone String
+  contactName  String
+
+  // Mensagem
+  messageType    String
+  messageContent String
+
+  // Metadados
+  timestamp  DateTime
+  receivedAt DateTime @default(now())
+  isFromMe   Boolean  @default(false)
+
+  // Classificação LLM
+  intent           String?
+  intentConfidence Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, externalId])
+  @@index([contactPhone])
+  @@index([timestamp])
+  @@index([provider])
+  @@index([intent])
+}
