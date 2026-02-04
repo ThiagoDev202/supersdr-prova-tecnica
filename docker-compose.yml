@@ -1,0 +1,79 @@
+# ===========================================
+# Docker Compose - Ambiente completo
+# ===========================================
+# Uso:
+#   Desenvolvimento: docker-compose up -d
+#   Produção:        docker-compose -f docker-compose.yml up -d
+# ===========================================
+
+services:
+  # ===========================================
+  # Aplicação Node.js
+  # ===========================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: supersdr-app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3000
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/supersdr_webhooks
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - USE_MOCK_LLM=${USE_MOCK_LLM:-false}
+      - ZAPI_INSTANCE_ID=${ZAPI_INSTANCE_ID:-placeholder}
+      - ZAPI_TOKEN=${ZAPI_TOKEN:-placeholder}
+      - ZAPI_CLIENT_TOKEN=${ZAPI_CLIENT_TOKEN:-placeholder}
+      - META_VERIFY_TOKEN=${META_VERIFY_TOKEN:-token_verificacao}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - supersdr-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ===========================================
+  # PostgreSQL Database
+  # ===========================================
+  db:
+    image: postgres:15-alpine
+    container_name: supersdr-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=supersdr_webhooks
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - supersdr-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d supersdr_webhooks"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+# ===========================================
+# Volumes persistentes
+# ===========================================
+volumes:
+  postgres_data:
+    driver: local
+
+# ===========================================
+# Rede interna
+# ===========================================
+networks:
+  supersdr-network:
+    driver: bridge
